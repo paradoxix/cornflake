@@ -49,20 +49,20 @@ pub enum CornFlakeError {
 
 impl fmt::Display for CornFlakeError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self {
-            &CornFlakeError::TooFewTimestampBits => write!(f, "TooFewTimestampBits (less then 41bit)"),
-            &CornFlakeError::NodeIdTooBig(ref id) => write!(f, "NodeIdTooBig: {}", id),
-            &CornFlakeError::ClockRunningBackwards => write!(f, "Clock running backwards!!!"),
+        match *self {
+            CornFlakeError::TooFewTimestampBits => write!(f, "TooFewTimestampBits (less then 41bit)"),
+            CornFlakeError::NodeIdTooBig(ref id) => write!(f, "NodeIdTooBig: {}", id),
+            CornFlakeError::ClockRunningBackwards => write!(f, "Clock running backwards!!!"),
         }
     }
 }
 
 impl StdError for CornFlakeError {
     fn description(&self) -> &str {
-        match self {
-            &CornFlakeError::TooFewTimestampBits => "TooFewTimestampBits (less then 41bit)",
-            &CornFlakeError::NodeIdTooBig(_) => "NodeIdTooBig",
-            &CornFlakeError::ClockRunningBackwards => "Clock running backwards!!!",
+        match *self {
+            CornFlakeError::TooFewTimestampBits => "TooFewTimestampBits (less then 41bit)",
+            CornFlakeError::NodeIdTooBig(_) => "NodeIdTooBig",
+            CornFlakeError::ClockRunningBackwards => "Clock running backwards!!!",
         }
     }
 }
@@ -101,7 +101,6 @@ impl CornFlake {
         })
     }
 
-    #[inline(always)]
     fn epoch_timestamp(&self) -> u64 {
         let t = time::get_time();
         ((t.sec as u64 - self.epoch) * 1000) + (t.nsec / 1000000) as u64
