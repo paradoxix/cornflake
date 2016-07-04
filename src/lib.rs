@@ -44,7 +44,6 @@ impl fmt::Display for CornFlake {
 pub enum CornFlakeError {
     TooFewTimestampBits,
     NodeIdTooBig(u64),
-    ClockRunningBackwards,
 }
 
 impl fmt::Display for CornFlakeError {
@@ -52,7 +51,6 @@ impl fmt::Display for CornFlakeError {
         match *self {
             CornFlakeError::TooFewTimestampBits => write!(f, "TooFewTimestampBits (less then 41bit)"),
             CornFlakeError::NodeIdTooBig(ref id) => write!(f, "NodeIdTooBig: {}", id),
-            CornFlakeError::ClockRunningBackwards => write!(f, "Clock running backwards!!!"),
         }
     }
 }
@@ -62,7 +60,6 @@ impl StdError for CornFlakeError {
         match *self {
             CornFlakeError::TooFewTimestampBits => "TooFewTimestampBits (less then 41bit)",
             CornFlakeError::NodeIdTooBig(_) => "NodeIdTooBig",
-            CornFlakeError::ClockRunningBackwards => "Clock running backwards!!!",
         }
     }
 }
@@ -122,7 +119,7 @@ impl CornFlake {
         let mut timestamp = self.epoch_timestamp();
 
         if timestamp < self.last_timestamp {
-            return Err(CornFlakeError::ClockRunningBackwards);
+            timestamp = self.til_next_ms();
         }
 
         if timestamp == self.last_timestamp {
