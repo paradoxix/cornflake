@@ -2,6 +2,12 @@
 name = "cornflake"
 version = "0.1.0"
 authors = ["Lars Reichardt <paranoiaix@gmail.com>"]
+license = "BSD-2-Clause"
+description = "Generator of unique ID numbers"
+keywords = ["id", "generator"]
+documentation = "https://github.com/paradoxix/cornflake"
+homepage = "https://github.com/paradoxix/cornflake"
+repository = "https://github.com/paradoxix/cornflake"
 
 [dependencies]
-time = "*"
+time = "0.1"
