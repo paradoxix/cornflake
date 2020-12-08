@@ -10,4 +10,3 @@ homepage = "https://github.com/paradoxix/cornflake"
 repository = "https://github.com/paradoxix/cornflake"
 
 [dependencies]
-time = "0.1"

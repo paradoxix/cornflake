@@ -1,9 +1,9 @@
-extern crate time;
-
 use std::default::Default;
 use std::error::Error as StdError;
 use std::fmt;
 use std::result;
+
+use std::time::{SystemTime, SystemTimeError, UNIX_EPOCH};
 
 // DEFAULT_EPOCH is 2016-01-01T00:00:00.000
 static DEFAULT_EPOCH: u64 = 1451602800;
@@ -29,7 +29,6 @@ pub struct CornFlake {
     sequence_mask: u64,
     last_timestamp: u64,
     epoch: u64,
-
     node_id_left_shift: i8,
     timestamp_left_shift: i8,
 }
@@ -41,30 +40,42 @@ impl fmt::Display for CornFlake {
 }
 
 #[derive(Debug)]
-pub enum CornFlakeError {
+pub enum CornFlakeConfigError {
     TooFewTimestampBits,
     NodeIdTooBig(u64),
 }
 
-impl fmt::Display for CornFlakeError {
+#[derive(Debug)]
+pub enum CornFlakeError {
+    ClockMovedBackwards(SystemTimeError)
+}
+
+impl From<SystemTimeError> for CornFlakeError {
+    fn from(err: SystemTimeError) -> CornFlakeError {
+        CornFlakeError::ClockMovedBackwards(err)
+    }
+}
+
+impl fmt::Display for CornFlakeConfigError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            CornFlakeError::TooFewTimestampBits => write!(f, "TooFewTimestampBits (less then 41bit)"),
-            CornFlakeError::NodeIdTooBig(ref id) => write!(f, "NodeIdTooBig: {}", id),
+            CornFlakeConfigError::TooFewTimestampBits => write!(f, "TooFewTimestampBits (less then 41bit)"),
+            CornFlakeConfigError::NodeIdTooBig(ref id) => write!(f, "NodeIdTooBig: {}", id),
         }
     }
 }
 
-impl StdError for CornFlakeError {
+impl StdError for CornFlakeConfigError {
     fn description(&self) -> &str {
         match *self {
-            CornFlakeError::TooFewTimestampBits => "TooFewTimestampBits (less then 41bit)",
-            CornFlakeError::NodeIdTooBig(_) => "NodeIdTooBig",
+            CornFlakeConfigError::TooFewTimestampBits => "TooFewTimestampBits (less then 41bit)",
+            CornFlakeConfigError::NodeIdTooBig(_) => "NodeIdTooBig",
         }
     }
 }
 
-pub type Result<T> = result::Result<T, CornFlakeError>;
+pub type CornFlakeConfigResult<T> = result::Result<T, CornFlakeConfigError>;
+pub type CornFlakeResult<T> = result::Result<T, CornFlakeError>;
 
 impl Default for Config {
     fn default() -> Config {
@@ -78,12 +89,12 @@ impl Default for Config {
 }
 
 impl CornFlake {
-    pub fn new(config: &Config) -> Result<CornFlake> {
+    pub fn new(config: &Config) -> CornFlakeConfigResult<CornFlake> {
         if config.node_id_bits + config.sequence_bits > 22 {
-            return Err(CornFlakeError::TooFewTimestampBits);
+            return Err(CornFlakeConfigError::TooFewTimestampBits);
         }
         if config.node_id > (1 << config.node_id_bits) {
-            return Err(CornFlakeError::NodeIdTooBig(config.node_id));
+            return Err(CornFlakeConfigError::NodeIdTooBig(config.node_id));
         }
 
         Ok(CornFlake {
@@ -98,34 +109,32 @@ impl CornFlake {
         })
     }
 
-    fn epoch_timestamp(&self) -> u64 {
-        let t = time::get_time();
-        ((t.sec as u64 - self.epoch) * 1000) + (t.nsec / 1000000) as u64
+    #[inline]
+    fn epoch_timestamp(&self) -> CornFlakeResult<u64> {
+        let t = SystemTime::now().duration_since(UNIX_EPOCH)?;
+        Ok(((t.as_secs() - self.epoch) * 1000) + t.subsec_nanos() as u64 / 1000000)
     }
 
-    fn til_next_ms(&self) -> u64 {
-        let mut timestamp = self.epoch_timestamp();
+    #[inline]
+    fn til_next_ms(&self) -> CornFlakeResult<u64> {
+        let mut timestamp = self.epoch_timestamp()?;
         while timestamp <= self.last_timestamp {
-            timestamp = self.epoch_timestamp();
+            timestamp = self.epoch_timestamp()?;
         }
-        timestamp
+        Ok(timestamp)
     }
 
     pub fn node_id(&self) -> u64 {
         self.node_id
     }
 
-    pub fn next_id(&mut self) -> Result<u64> {
-        let mut timestamp = self.epoch_timestamp();
-
-        if timestamp < self.last_timestamp {
-            timestamp = self.til_next_ms();
-        }
+    pub fn next_id(&mut self) -> CornFlakeResult<u64> {
+        let mut timestamp = self.epoch_timestamp()?;
 
         if timestamp == self.last_timestamp {
             self.sequence = (self.sequence + 1) & self.sequence_mask;
             if self.sequence == 0 {
-                timestamp = self.til_next_ms();
+                timestamp = self.til_next_ms()?;
             }
         } else {
             self.sequence = 0;
@@ -148,7 +157,7 @@ mod tests {
         let c: Config = Default::default();
         let mut f = CornFlake::new(&c).unwrap();
 
-        for _ in 1..100 {
+        for _ in 1..1000000 {
             println!("{} ", f.next_id().unwrap());
         }
     }
