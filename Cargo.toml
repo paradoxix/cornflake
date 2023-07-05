@@ -1,6 +1,6 @@
 [package]
 name = "cornflake"
-version = "0.1.0"
+version = "0.4.0"
 authors = ["Lars Reichardt <paranoiaix@gmail.com>"]
 license = "BSD-2-Clause"
 description = "Generator of unique ID numbers"
