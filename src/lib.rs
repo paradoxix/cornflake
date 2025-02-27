@@ -1,5 +1,4 @@
 use std::default::Default;
-use std::error::Error as StdError;
 use std::fmt;
 use std::result;
 
@@ -61,15 +60,6 @@ impl fmt::Display for CornFlakeConfigError {
         match *self {
             CornFlakeConfigError::TooFewTimestampBits => write!(f, "TooFewTimestampBits (less then 41bit)"),
             CornFlakeConfigError::NodeIdTooBig(ref id) => write!(f, "NodeIdTooBig: {}", id),
-        }
-    }
-}
-
-impl StdError for CornFlakeConfigError {
-    fn description(&self) -> &str {
-        match *self {
-            CornFlakeConfigError::TooFewTimestampBits => "TooFewTimestampBits (less then 41bit)",
-            CornFlakeConfigError::NodeIdTooBig(_) => "NodeIdTooBig",
         }
     }
 }
